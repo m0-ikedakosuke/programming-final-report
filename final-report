@@ -1,0 +1,175 @@
+//ヘッダーファイル//
+
+#pragma once
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
+using namespace std;
+
+template <typename T>
+class CSV_grade {
+public:
+    string filepath;
+    bool isHeader;
+    bool isIndex;
+    char delim;
+    vector<string> header;
+    vector<string> index1;
+    vector<string> index2;
+    vector<vector<T>> cell;
+
+    T cast_cell(string);
+    void csv_read(string, bool, bool, char);
+};
+
+
+template <typename T>
+void CSV_grade<T>::csv_read(string filepath, bool isHeader, bool isIndex, char delim) {
+    this->filepath = filepath;
+    this->isHeader = isHeader;
+    this->isIndex = isIndex;
+    this->delim = delim;
+
+    string str_buf;
+    string str_comma_buf;
+
+    ifstream ifs_csv_file(filepath);
+    for (int i = 0; getline(ifs_csv_file, str_buf); i++) {
+        cell.push_back(vector<T>());
+
+        istringstream i_stream(str_buf);
+        for (int j = 0; getline(i_stream, str_comma_buf, delim); j++) {
+            if (isHeader && isIndex) {
+                if (i == 0 && j == 0) continue;
+                if (i == 0 && j >= 2) header.push_back(str_comma_buf);
+                if (i != 0 && j == 0) index1.push_back(str_comma_buf);
+                if (i != 0 && j == 1) index2.push_back(str_comma_buf);
+                if (i != 0 && j >= 2) cell.at(i - 1).push_back(cast_cell(str_comma_buf));
+            }
+            else if (isHeader) {
+                if (i == 0) header.push_back(str_comma_buf);
+                if (i != 0 && j == 0) index1.push_back(string());
+                if (i != 0 && j == 1) index2.push_back(string());
+                if (i != 0) cell.at(i - 1).push_back(cast_cell(str_comma_buf));
+            }
+            else if (isIndex) {
+                if (i == 0 && j != 0) header.push_back(string());
+                if (j == 0) index1.push_back(str_comma_buf);
+                if (j == 1) index2.push_back(str_comma_buf);
+                if (j >= 2) cell.at(i).push_back(cast_cell(str_comma_buf));
+            }
+            else {
+                if (i == 0) header.push_back(string());
+                if (j == 0) index1.push_back(string());
+                if (j == 1) index2.push_back(string());
+                cell.at(i).push_back(cast_cell(str_comma_buf));
+            }
+        }
+    }
+}
+
+
+
+//ソースファイル//
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include "csv_grade.h"
+
+int main() {
+    CSV_grade<int> data;
+    data.csv_read("grade.csv", true, true, ',');
+
+    vector<int> regular_total;
+    vector<int> final;
+
+    for (int i = 0; i < data.cell.size(); i++) {
+        int total = 0;
+        for (int j = 1; j < data.cell.at(i).size(); j++) {
+            total += data.cell.at(i).at(j);
+        }
+        regular_total.push_back(total);
+    }
+
+    for (int i = 0; i < data.cell.at(i).size(); i++) {
+        final.push_back(data.cell.at(i).at(0));
+    }
+
+    vector<string> titol{ "学籍番号" , "名前" , "最終課題(/70点)" , "通常課題合計(/65点)" , "点数(/100点)" , "評価" };
+
+    for (auto i = titol.begin(); i != titol.end(); i++) {
+        cout << *i << "    \t";
+    }
+    cout << endl;
+
+    for (int i = 0; i < final.size(); i++) {
+        if (data.isIndex) {
+            cout << data.index1.at(i) << "\t";
+            cout << data.index2.at(i) << "\t";
+        }
+
+        cout << final[i] << "\t\t\t";
+        cout << regular_total[i] <<"\t\t\t";
+
+        int point = 0;
+        point = regular_total[i] * 30 / 65 + final[i];
+        cout << point << "\t\t\t";
+        
+        if (point >= 90) {
+            cout << "秀";
+        }
+        else if (point >= 80) {
+            cout << "優";
+        }
+        else if (point >= 70) {
+            cout << "良";
+        }
+        else if (point >= 60) {
+            cout << "可";
+        }
+        else {
+            cout << "不可";
+        }
+        cout << endl;
+    }
+
+    ofstream outfile("grade_result.csv");
+    for (auto i = titol.begin(); i != titol.end(); i++) {
+        outfile << *i << ", ";
+    }
+    outfile << endl;
+
+    for (int i = 0; i < final.size(); i++) {
+        if (data.isIndex) {
+            outfile << data.index1.at(i) << ", " << data.index2.at(i) << ", ";
+        }
+
+        outfile << final[i] << "," << regular_total[i] << ", ";
+
+        int point = 0;
+        point = regular_total[i] * 30 / 65 + final[i];
+        outfile << point << ", ";
+        
+        if (point >= 90) {
+            outfile << "秀";
+        }
+        else if (point >= 80) {
+            outfile << "優";
+        }
+        else if (point >= 70) {
+            outfile << "良";
+        }
+        else if (point >= 60) {
+            outfile << "可";
+        }
+        else {
+            outfile << "不可";
+        }
+        outfile << endl;
+    }
+    outfile.close();
+}
